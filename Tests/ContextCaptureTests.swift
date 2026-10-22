@@ -83,6 +83,29 @@ enum ContextCaptureTests {
         let snapshot = await task.value
         TestSupport.expectEqual(snapshot?.currentActivity, "Synthetic context")
         TestSupport.expectEqual(enabled.capturedContext?.screenshotDataURL, "synthetic-image")
+        // Cleanup has already resolved its context when the preference changes.
+        let resolved = await enabled.contextForTranscription(snapshot, task: task)
+        let generation = enabled.contextCaptureGeneration
+        let syntheticPrompt = "Synthetic cleanup prompt containing window context"
+        let unchanged = enabled.contextForPublication(resolved, prompt: syntheticPrompt, generation: generation)
+        TestSupport.expectEqual(unchanged.context.screenshotDataURL, "synthetic-image")
+        TestSupport.expectEqual(unchanged.prompt, syntheticPrompt)
+        for reenable in [false, true] {
+            enabled.contextCaptureEnabled = false
+            if reenable { enabled.contextCaptureEnabled = true }
+            let publication = enabled.contextForPublication(resolved, prompt: syntheticPrompt, generation: generation)
+            TestSupport.expect(publication.context.screenshotDataURL == nil && publication.context.selectedText == nil
+                               && publication.context.windowTitle == nil && publication.context.appName == nil,
+                               "Disabling during cleanup must remove resolved context before UI/history publication")
+            TestSupport.expectEqual(publication.prompt, "")
+            let errorPublication = enabled.contextForPublication(resolved, prompt: "", generation: generation)
+            TestSupport.expect(errorPublication.context.screenshotDataURL == nil,
+                               "Error history must also reject previously resolved context")
+        }
+        let nextRun = enabled.contextForPublication(resolved, prompt: syntheticPrompt,
+                                                   generation: enabled.contextCaptureGeneration)
+        TestSupport.expectEqual(nextRun.context.screenshotDataURL, "synthetic-image")
+        TestSupport.expectEqual(nextRun.prompt, syntheticPrompt)
         enabled.contextCaptureEnabled = false
         enabled.contextCaptureEnabled = true
         let discarded = await enabled.contextForTranscription(snapshot, task: task)

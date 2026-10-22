@@ -443,6 +443,7 @@ final class AppState: ObservableObject, @unchecked Sendable {
         didSet {
             UserDefaults.standard.set(contextCaptureEnabled, forKey: contextCaptureEnabledStorageKey)
             if !contextCaptureEnabled {
+                contextCaptureGeneration = UUID()
                 contextCaptureTask?.cancel()
                 contextCaptureTask = nil
                 capturedContext = nil
@@ -627,6 +628,7 @@ final class AppState: ObservableObject, @unchecked Sendable {
     private var transcriptionTask: Task<Void, Never>?
     private var transcribingAudioFileName: String?
     private var contextService: AppContextService
+    private var contextCaptureGeneration = UUID()
     private var contextCaptureTask: Task<AppContext?, Never>?
     private var capturedContext: AppContext?
     private var hasShownScreenshotPermissionAlert = false
@@ -2671,6 +2673,7 @@ final class AppState: ObservableObject, @unchecked Sendable {
         audioLevelCancellable?.cancel()
         audioLevelCancellable = nil
         debugStatusMessage = "Preparing audio"
+        let contextGeneration = contextCaptureGeneration
         let sessionContext = capturedContext
         let inFlightContextTask = contextCaptureTask
         capturedContext = nil
@@ -2785,6 +2788,10 @@ final class AppState: ObservableObject, @unchecked Sendable {
 
                     await MainActor.run {
                         guard self.isTranscribing else { return }
+                        let publication = self.contextForPublication(
+                            appContext, prompt: result.prompt, generation: contextGeneration
+                        )
+                        let appContext = publication.context
                         self.lastContextSummary = appContext.contextSummary
                         self.lastContextScreenshotDataURL = appContext.screenshotDataURL
                         self.lastContextScreenshotStatus = appContext.screenshotError
@@ -2800,14 +2807,14 @@ final class AppState: ObservableObject, @unchecked Sendable {
                             for: result.outcome,
                             parsedTranscript: parsedTranscript
                         )
-                        self.lastPostProcessingPrompt = result.prompt
+                        self.lastPostProcessingPrompt = publication.prompt
                         self.lastRawTranscript = trimmedRawTranscript
                         self.lastPostProcessedTranscript = trimmedFinalTranscript
                         self.lastPostProcessingStatus = processingStatus
                         self.recordPipelineHistoryEntry(
                             rawTranscript: trimmedRawTranscript,
                             postProcessedTranscript: trimmedFinalTranscript,
-                            postProcessingPrompt: result.prompt,
+                            postProcessingPrompt: publication.prompt,
                             systemPrompt: Self.resolvedSystemPrompt(self.customSystemPrompt),
                             context: appContext,
                             processingStatus: processingStatus,
@@ -2879,6 +2886,9 @@ final class AppState: ObservableObject, @unchecked Sendable {
                     let resolvedContext = await self.contextForTranscription(sessionContext, task: inFlightContextTask)
                     await MainActor.run {
                         guard self.isTranscribing else { return }
+                        let resolvedContext = self.contextForPublication(
+                            resolvedContext, prompt: "", generation: contextGeneration
+                        ).context
                         self.transcriptionTask = nil
                         self.transcribingAudioFileName = nil
                         let userFacingErrorMessage = self.formattedTranscriptionError(error)
@@ -3041,6 +3051,16 @@ final class AppState: ObservableObject, @unchecked Sendable {
         // The preference can change while waiting, including off and back on.
         guard contextCaptureEnabled, task?.isCancelled != true else { return Self.disabledContext() }
         return context ?? fallbackContextAtStop()
+    }
+
+    /// Rechecks invalidation after processing, before context or derived prompts enter UI/history.
+    private func contextForPublication(
+        _ context: AppContext, prompt: String, generation: UUID
+    ) -> (context: AppContext, prompt: String) {
+        guard contextCaptureEnabled, generation == contextCaptureGeneration else {
+            return (Self.disabledContext(), "")
+        }
+        return (context, prompt)
     }
 
     private static func disabledContext() -> AppContext {

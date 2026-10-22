@@ -6,7 +6,7 @@ source_path, output_path = ARGV
 lines = File.readlines(source_path)
 File.write(output_path, "// Generated from AppState.swift; do not edit.\nimport Foundation\n")
 
-context_names = %w[startContextCapture contextForTranscription disabledContext]
+context_names = %w[startContextCapture contextForTranscription contextForPublication disabledContext]
 context_methods = context_names.map do |name|
   start = lines.index { |line| line.match?(/^    private (?:static )?func #{name}\b/) }
   abort "missing context method #{name}" unless start
@@ -25,6 +25,7 @@ File.open(output_path, "a") do |file|
   file.write(preference)
   file.write(<<~SWIFT)
       let contextService = TestContextService()
+      var contextCaptureGeneration = UUID()
       var contextCaptureTask: Task<AppContext?, Never>?
       var capturedContext: AppContext?
       var lastContextSummary = ""
