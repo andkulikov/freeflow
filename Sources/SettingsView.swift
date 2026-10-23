@@ -1983,7 +1983,7 @@ struct PromptsSettingsView: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text("Test Context Prompt")
                     .font(.caption.weight(.semibold))
-                Text("This manual test captures a screenshot and metadata from the frontmost app and sends them to your context provider, independently of the dictation setting. If active window context is off, you will be asked to confirm this one test.")
+                Text("This manual test captures a screenshot and metadata from the frontmost app and sends them to your configured context provider. If active-window capture fails and full-desktop fallback is enabled, the screenshot may include the full desktop, including other apps. The test runs independently of the dictation setting. If active window context is off, you will be asked to confirm this one test.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
 
@@ -2008,7 +2008,7 @@ struct PromptsSettingsView: View {
                         runContextPromptTest()
                     }
                 } message: {
-                    Text("This one test will capture a screenshot and app metadata and send them to your configured context provider. Your dictation setting will stay off.")
+                    Text("This one test will capture a screenshot and app metadata and send them to your configured context provider. If active-window capture fails and full-desktop fallback is enabled, the screenshot may include the full desktop, including other apps. Your dictation setting will stay off.")
                 }
 
                 if appState.apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
