@@ -136,11 +136,13 @@ Return only two sentences, no labels, no markdown, no extra commentary.
 
         let windowTitle = focusedWindowTitle(from: appElement) ?? appName
         let selectedText = selectedText(from: appElement)
-        let screenshot = captureActiveWindowScreenshot(
-            processIdentifier: frontmostApp.processIdentifier,
-            appElement: appElement,
-            focusedWindowTitle: windowTitle
-        )
+        let screenshot = captureScreenshotIfNotCancelled {
+            captureActiveWindowScreenshot(
+                processIdentifier: frontmostApp.processIdentifier,
+                appElement: appElement,
+                focusedWindowTitle: windowTitle
+            )
+        }
         let currentActivity: String
         let contextPrompt: String?
         if !Task.isCancelled, !apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -176,6 +178,15 @@ Return only two sentences, no labels, no markdown, no extra commentary.
             screenshotMimeType: screenshot.mimeType,
             screenshotError: screenshot.error
         )
+    }
+
+    func captureScreenshotIfNotCancelled(
+        using capture: () -> (dataURL: String?, mimeType: String?, error: String?)
+    ) -> (dataURL: String?, mimeType: String?, error: String?) {
+        guard !Task.isCancelled else {
+            return (nil, nil, "Context capture cancelled")
+        }
+        return capture()
     }
 
     private func inferActivityWithLLM(

@@ -103,9 +103,9 @@ typecheck:
 		-target $(ARCH)-apple-macosx13.0 \
 		$(SOURCES)
 
-$(TEST_CONTEXT_HARNESS): Sources/AppState.swift Tests/generate-context-capture-harness.rb
+$(TEST_CONTEXT_HARNESS): Sources/AppState.swift Sources/SettingsView.swift Tests/generate-context-capture-harness.rb
 	@mkdir -p "$(BUILD_DIR)"
-	ruby Tests/generate-context-capture-harness.rb $< "$@"
+	ruby Tests/generate-context-capture-harness.rb $< Sources/SettingsView.swift "$@"
 
 test: $(TEST_CONTEXT_HARNESS)
 	@mkdir -p "$(BUILD_DIR)"
