@@ -199,7 +199,8 @@ enum AppContextServiceTests {
             ContextInferenceFailure.missingAPIKey.summary,
             "Could not reliably infer a two-sentence summary for SyntheticApp from the screenshot and metadata.",
             "Could not refresh app context at stop time; using text-only post-processing.",
-            "You are dictating in an unrecognized context."
+            "You are dictating in an unrecognized context.",
+            "Active window context disabled."
         ]
         for summary in failures {
             let context = AppContext(

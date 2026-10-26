@@ -2616,12 +2616,23 @@ final class AppState: ObservableObject, @unchecked Sendable {
         customSystemPrompt: String,
         outputLanguage: String = "",
         dictationLanguage: String = "",
-        preserveExactWording: Bool
+        preserveExactWording: Bool,
+        contextGeneration: UUID? = nil
     ) async -> (finalTranscript: String, outcome: TranscriptProcessingOutcome, prompt: String) {
         let trimmedRawTranscript = rawTranscript.trimmingCharacters(in: .whitespacesAndNewlines)
 
         guard !trimmedRawTranscript.isEmpty else {
             return ("", .skippedEmptyRawTranscript, "")
+        }
+
+        let contextSummaryProvider: (@Sendable () async -> String)?
+        if let contextGeneration {
+            contextSummaryProvider = { [weak self] in
+                await self?.contextSummaryForRequest(context, generation: contextGeneration) ?? ""
+            }
+        } else {
+            // History retries intentionally reuse their saved context.
+            contextSummaryProvider = nil
         }
 
         if case .command(let invocation, let selectedText) = intent {
@@ -2631,7 +2642,8 @@ final class AppState: ObservableObject, @unchecked Sendable {
                     voiceCommand: rawTranscript,
                     context: context,
                     customVocabulary: customVocabulary,
-                    outputLanguage: outputLanguage
+                    outputLanguage: outputLanguage,
+                    contextSummaryProvider: contextSummaryProvider
                 )
                 return (result.transcript, .commandModeSucceeded(invocation: invocation), result.prompt)
             } catch {
@@ -2682,7 +2694,8 @@ final class AppState: ObservableObject, @unchecked Sendable {
                 customVocabulary: customVocabulary,
                 customSystemPrompt: customSystemPrompt,
                 outputLanguage: outputLanguage,
-                dictationLanguage: dictationLanguage
+                dictationLanguage: dictationLanguage,
+                contextSummaryProvider: contextSummaryProvider
             )
             return (result.transcript, .postProcessingSucceeded, result.prompt)
         } catch {
@@ -2843,7 +2856,8 @@ final class AppState: ObservableObject, @unchecked Sendable {
                         customSystemPrompt: self.customSystemPrompt,
                         outputLanguage: self.outputLanguage,
                         dictationLanguage: Self.dictationLanguageName(for: self.transcriptionLanguage),
-                        preserveExactWording: self.preserveExactWording
+                        preserveExactWording: self.preserveExactWording,
+                        contextGeneration: contextGeneration
                     )
                     try Task.checkCancellation()
 
@@ -3117,6 +3131,13 @@ final class AppState: ObservableObject, @unchecked Sendable {
         // The preference can change while waiting, including off and back on.
         guard contextCaptureEnabled, task?.isCancelled != true else { return Self.disabledContext() }
         return context ?? fallbackContextAtStop()
+    }
+
+    // Recheck each cleanup/Edit Mode request, including fallback attempts.
+    @MainActor
+    private func contextSummaryForRequest(_ context: AppContext, generation: UUID) -> String {
+        guard contextCaptureEnabled, generation == contextCaptureGeneration else { return "" }
+        return context.summaryForPostProcessing
     }
 
     /// Rechecks invalidation after processing, before context or derived prompts enter UI/history.

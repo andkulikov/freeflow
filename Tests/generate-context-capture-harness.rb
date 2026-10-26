@@ -6,7 +6,7 @@ source_path, settings_path, output_path = ARGV
 lines = File.readlines(source_path)
 File.write(output_path, "// Generated from AppState.swift; do not edit.\nimport Foundation\n")
 
-context_names = %w[startContextCapture contextForTranscription contextForPublication disabledContext]
+context_names = %w[startContextCapture contextForTranscription contextSummaryForRequest contextForPublication disabledContext]
 context_methods = context_names.map do |name|
   start = lines.index { |line| line.match?(/^    private (?:static )?func #{name}\b/) }
   abort "missing context method #{name}" unless start
