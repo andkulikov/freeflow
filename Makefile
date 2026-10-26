@@ -13,14 +13,18 @@ APP_EXECUTABLE_TARGET := $(subst $(space),\ ,$(APP_EXECUTABLE))
 SOURCES = $(shell find Sources -name '*.swift' -type f | LC_ALL=C sort)
 TEST_RUNNER = $(BUILD_DIR)/FreeFlowTests
 TEST_CONTEXT_HARNESS = $(BUILD_DIR)/ContextCaptureHarness.swift
+TEST_DISPATCH_HARNESS = $(BUILD_DIR)/AppTextInsertionDispatchHarness.swift
 TEST_PRODUCTION_SOURCES = \
 	Sources/APIConfigurationDraft.swift \
 	Sources/AppContextService.swift \
 	Sources/AppName.swift \
+	Sources/AppTextInsertionCore.swift \
+	Sources/AppTextInsertionTarget.swift \
 	Sources/ContextInferenceFailure.swift \
 	Sources/LLMAPITransport.swift \
 	Sources/LLMCooldownManager.swift \
 	Sources/ModelConfiguration.swift \
+	Sources/OriginalFieldInsertionPreference.swift \
 	Sources/PostProcessingService.swift \
 	Sources/RecordingCaptureTiming.swift \
 	Sources/RecordingTimerPreference.swift \
@@ -107,7 +111,11 @@ $(TEST_CONTEXT_HARNESS): Sources/AppState.swift Sources/SettingsView.swift Tests
 	@mkdir -p "$(BUILD_DIR)"
 	ruby Tests/generate-context-capture-harness.rb $< Sources/SettingsView.swift "$@"
 
-test: $(TEST_CONTEXT_HARNESS)
+$(TEST_DISPATCH_HARNESS): Sources/AppState.swift Tests/generate-insertion-dispatch-harness.rb
+	@mkdir -p "$(BUILD_DIR)"
+	ruby Tests/generate-insertion-dispatch-harness.rb $< "$@"
+
+test: $(TEST_CONTEXT_HARNESS) $(TEST_DISPATCH_HARNESS)
 	@mkdir -p "$(BUILD_DIR)"
 	swiftc \
 		-parse-as-library \
@@ -117,7 +125,8 @@ test: $(TEST_CONTEXT_HARNESS)
 		-target $(ARCH)-apple-macosx13.0 \
 		$(TEST_PRODUCTION_SOURCES) \
 		$(TEST_SOURCES) \
-		"$(TEST_CONTEXT_HARNESS)"
+		"$(TEST_CONTEXT_HARNESS)" \
+		"$(TEST_DISPATCH_HARNESS)"
 	@$(TEST_RUNNER)
 
 validate:
