@@ -12,6 +12,7 @@ APP_EXECUTABLE_TARGET := $(subst $(space),\ ,$(APP_EXECUTABLE))
 
 SOURCES = $(shell find Sources -name '*.swift' -type f | LC_ALL=C sort)
 TEST_RUNNER = $(BUILD_DIR)/FreeFlowTests
+TEST_CONTEXT_HARNESS = $(BUILD_DIR)/ContextCaptureHarness.swift
 TEST_DISPATCH_HARNESS = $(BUILD_DIR)/AppTextInsertionDispatchHarness.swift
 TEST_PRODUCTION_SOURCES = \
 	Sources/APIConfigurationDraft.swift \
@@ -106,11 +107,15 @@ typecheck:
 		-target $(ARCH)-apple-macosx13.0 \
 		$(SOURCES)
 
+$(TEST_CONTEXT_HARNESS): Sources/AppState.swift Sources/SettingsView.swift Tests/generate-context-capture-harness.rb
+	@mkdir -p "$(BUILD_DIR)"
+	ruby Tests/generate-context-capture-harness.rb $< Sources/SettingsView.swift "$@"
+
 $(TEST_DISPATCH_HARNESS): Sources/AppState.swift Tests/generate-insertion-dispatch-harness.rb
 	@mkdir -p "$(BUILD_DIR)"
 	ruby Tests/generate-insertion-dispatch-harness.rb $< "$@"
 
-test: $(TEST_DISPATCH_HARNESS)
+test: $(TEST_CONTEXT_HARNESS) $(TEST_DISPATCH_HARNESS)
 	@mkdir -p "$(BUILD_DIR)"
 	swiftc \
 		-parse-as-library \
@@ -120,6 +125,7 @@ test: $(TEST_DISPATCH_HARNESS)
 		-target $(ARCH)-apple-macosx13.0 \
 		$(TEST_PRODUCTION_SOURCES) \
 		$(TEST_SOURCES) \
+		"$(TEST_CONTEXT_HARNESS)" \
 		"$(TEST_DISPATCH_HARNESS)"
 	@$(TEST_RUNNER)
 

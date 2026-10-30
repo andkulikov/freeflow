@@ -1273,6 +1273,14 @@ struct GeneralSettingsView: View {
 
     private var cleanupSection: some View {
         VStack(alignment: .leading, spacing: 10) {
+            Toggle("Use active window context", isOn: $appState.contextCaptureEnabled)
+
+            Text("Uses window context to help with names and terminology in new dictations. Turn off to skip their screenshots and context requests; accuracy may decrease. Edit Mode still uses selected text. The manual Context Prompt test asks before overriding this setting, and retrying history can reuse its saved context.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            Divider()
+
             Toggle("Preserve exact wording", isOn: $appState.preserveExactWording)
 
             Text("When on, \(AppName.displayName) skips the LLM cleanup step and pastes the transcript verbatim — filler words, informal phrasing, and explicit language are all preserved. Voice macros and Edit Mode still run.")
@@ -1552,6 +1560,7 @@ struct PromptsSettingsView: View {
     @State private var systemTestPrompt: String? = nil
 
     // Context prompt test state
+    @State private var showContextTestConfirmation = false
     @State private var contextTestRunning = false
     @State private var contextTestOutput: String? = nil
     @State private var contextTestError: String? = nil
@@ -1989,12 +1998,12 @@ struct PromptsSettingsView: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text("Test Context Prompt")
                     .font(.caption.weight(.semibold))
-                Text("Captures a screenshot and metadata from the frontmost app, then runs the context prompt to infer activity.")
+                Text("This manual test captures a screenshot and metadata from the frontmost app and sends them to your configured context provider. If active-window capture fails and full-desktop fallback is enabled, the screenshot may include the full desktop, including other apps. The test runs independently of the dictation setting. If active window context is off, you will be asked to confirm this one test.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
 
                 Button {
-                    runContextPromptTest()
+                    requestContextPromptTest()
                 } label: {
                     HStack(spacing: 6) {
                         if contextTestRunning {
@@ -2008,6 +2017,14 @@ struct PromptsSettingsView: View {
                     }
                 }
                 .disabled(contextTestRunning || appState.apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .alert("Run context test while context is off?", isPresented: $showContextTestConfirmation) {
+                    Button("Cancel", role: .cancel) { }
+                    Button("Run One Test") {
+                        runContextPromptTest()
+                    }
+                } message: {
+                    Text("This one test will capture a screenshot and app metadata and send them to your configured context provider. If active-window capture fails and full-desktop fallback is enabled, the screenshot may include the full desktop, including other apps. Your dictation setting will stay off.")
+                }
 
                 if appState.apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                     Label("API key required to test", systemImage: "exclamationmark.triangle")
@@ -2046,6 +2063,14 @@ struct PromptsSettingsView: View {
                     .foregroundStyle(.secondary)
                 }
             }
+        }
+    }
+
+    private func requestContextPromptTest() {
+        if appState.contextCaptureEnabled {
+            runContextPromptTest()
+        } else {
+            showContextTestConfirmation = true
         }
     }
 
