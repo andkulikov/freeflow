@@ -1103,6 +1103,35 @@ struct GeneralSettingsView: View {
             Divider()
 
             VStack(alignment: .leading, spacing: 8) {
+                Text("Dictation Cleanup")
+                    .font(.caption.weight(.semibold))
+
+                Picker("Hold to Talk", selection: $appState.holdShortcutCleanupPreference) {
+                    Text("Use global setting").tag(ShortcutCleanupPreference.inherit)
+                    Text("Preserve exact wording").tag(ShortcutCleanupPreference.preserveExactWording)
+                    Text("Cleanup").tag(ShortcutCleanupPreference.cleanup)
+                }
+                .pickerStyle(.menu)
+
+                Picker("Tap to Toggle", selection: $appState.toggleShortcutCleanupPreference) {
+                    Text("Use global setting").tag(ShortcutCleanupPreference.inherit)
+                    Text("Preserve exact wording").tag(ShortcutCleanupPreference.preserveExactWording)
+                    Text("Cleanup").tag(ShortcutCleanupPreference.cleanup)
+                }
+                .pickerStyle(.menu)
+
+                Text("Use global setting follows Preserve exact wording under Cleanup. Cleanup applies your rewording prompt. The choice is fixed when recording starts, even if you switch from holding to tap mode.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                Text("Output Language still applies; exact wording uses literal translation. Voice macros and Edit Mode still run. Menu-bar recordings use the global setting.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Divider()
+
+            VStack(alignment: .leading, spacing: 8) {
                 HStack {
                     Text("Shortcut Start Delay")
                         .font(.caption.weight(.semibold))
@@ -1283,7 +1312,7 @@ struct GeneralSettingsView: View {
 
             Toggle("Preserve exact wording", isOn: $appState.preserveExactWording)
 
-            Text("When on, \(AppName.displayName) skips the LLM cleanup step and pastes the transcript verbatim — filler words, informal phrasing, and explicit language are all preserved. Voice macros and Edit Mode still run.")
+            Text("The default for dictation; each shortcut can override it under Dictation Shortcuts. When on, \(AppName.displayName) skips the LLM cleanup step and pastes the transcript verbatim — filler words, informal phrasing, and explicit language are all preserved. Voice macros and Edit Mode still run.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
